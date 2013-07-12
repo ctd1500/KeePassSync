@@ -122,15 +122,10 @@ namespace KeePassSync.Providers.S3 {
 
 
 				GenerateSigElements("PutObjectInline", out stamp, out sig);
-				//PutObjectResult result = client.PutObjectInline(m_UserControl.BucketName, remoteFilename, null, data, data.Length, acl, StorageClass.STANDARD, true, m_UserControl.AccessKey, stamp, true, sig, null);
-
-
 				AmazonS3Client s3client = getClient();
-
 				var request = new PutObjectRequest().WithBucketName(m_UserControl.BucketName).WithKey(remoteFilename).WithFilePath(localFilename);
 
 				PutObjectResponse result = s3client.PutObject(request);
-
 				
 				if (result == null)
 					throw new Exception("Put File Failed");
@@ -179,10 +174,7 @@ namespace KeePassSync.Providers.S3 {
 				DateTime stamp;
 				String sig;
 				GenerateSigElements("GetObject", out stamp, out sig);
-				//GetObjectResult result = client.GetObject(m_UserControl.BucketName, remoteFilename, false, true, true, m_UserControl.AccessKey, stamp, true, sig, null);
-
 				AmazonS3Client s3client = getClient();
-
 				var request = new GetObjectRequest().WithBucketName(m_UserControl.BucketName).WithKey(remoteFilename);
 
 				using (GetObjectResponse result = s3client.GetObject(request)) {
@@ -198,18 +190,6 @@ namespace KeePassSync.Providers.S3 {
 					writer.Write(data);
 					writer.Close();
 				}
-
-				/*
-				if (result == null || result.Data == null)
-					return KeePassSyncErr.FileNotFound;
-				byte[] data = result.Data;
-				string hash = get_md5(data);
-				if (hash != result.ETag)
-					throw new Exception("File downloaded but our hash of: " + hash + " does not match server hash of: " + result.ETag);
-				BinaryWriter writer = new BinaryWriter(File.OpenWrite(localFilename));
-				writer.Write(data);
-				writer.Close();
-				*/
 			}
 			catch (Exception e) {
 				return convert_exception(e);
@@ -275,7 +255,6 @@ namespace KeePassSync.Providers.S3 {
 			return s3client;
 		}
 
-
 		private void CopyStream(Stream input, Stream output) {
 			int read = 0;
 			byte[] buffer = new byte[32000];
@@ -288,7 +267,6 @@ namespace KeePassSync.Providers.S3 {
 				}
 			} while (read > 0);
 		}
-
 
 		public static byte[] ReadFullStream(Stream input) {
 			byte[] buffer = new byte[16 * 1024];
