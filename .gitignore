@@ -1,2 +1,4 @@
 *.suo
 /KeePassSync/obj
+/KeePassSync/obj
+/KeePassSync/bin
