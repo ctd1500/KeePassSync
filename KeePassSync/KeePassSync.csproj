@@ -385,7 +385,7 @@
       echo Files copied to temporary directory
 
       REM create the PLGX
-      "%25KPDir%25KeePass.exe" --plgx-create "%25KPSTempDir%25" --plgx-prereq-net:3.5
+      "%25KPDir%25KeePass.exe" --plgx-create "%25KPSTempDir%25" --plgx-prereq-kp:2.09 --plgx-prereq-net:3.5
       if errorlevel 1 goto BuildEventFailed
       echo PLGX created
 

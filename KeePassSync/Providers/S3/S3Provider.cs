@@ -25,6 +25,7 @@ namespace KeePassSync.Providers.S3 {
 		private const string access_key_field = PwDefs.UserNameField;
 		private const string bucket_name_field = PwDefs.UrlField;
 		private const string create_backups_field = "create_backups";
+		private const string region_name_field = "region_name";
 
 		private const string secret_access_key_field = PwDefs.PasswordField;
 		private bool memprotect_secret_access_key = true;
@@ -43,6 +44,10 @@ namespace KeePassSync.Providers.S3 {
 			m_UserControl.AccessKey = read_PwEntry_string(entry, access_key_field);
 			m_UserControl.SecretAccessKey = read_PwEntry_string(entry, secret_access_key_field);
 			m_UserControl.BucketName = read_PwEntry_string(entry, bucket_name_field);
+
+			m_UserControl.RegionName = Amazon.RegionEndpoint.USEast1.SystemName;
+			m_UserControl.RegionName = read_PwEntry_string(entry, region_name_field);
+
 			String backup_str = read_PwEntry_string(entry, create_backups_field);
 
 			m_UserControl.CreateBackups = false;
@@ -55,6 +60,7 @@ namespace KeePassSync.Providers.S3 {
 			write_PwEntry_string(entry, secret_access_key_field, m_UserControl.SecretAccessKey, memprotect_secret_access_key);
 			write_PwEntry_string(entry, bucket_name_field, m_UserControl.BucketName, false);
 			write_PwEntry_string(entry, create_backups_field, m_UserControl.CreateBackups ? "true" : "false", false);
+			write_PwEntry_string(entry, region_name_field, m_UserControl.RegionName, false);
 		}
 		public void write_PwEntry_string(PwEntry entry, String key, String value, bool in_memory_encrypt) {
 			entry.Strings.Set(key, new ProtectedString(in_memory_encrypt, value));
@@ -104,14 +110,20 @@ namespace KeePassSync.Providers.S3 {
 					return err;
 				DateTime stamp;
 				String sig;
+
+				AmazonS3Client s3client = getClient();
+
 				if ((m_UserControl.CreateBackups) && fileExists(remoteFilename)){
 					string backupFilename = remoteFilename + ".bkup_day" + DateTime.Today.Day;
 
-					GenerateSigElements("CopyObject", out stamp, out sig);
-					client.CopyObject(m_UserControl.BucketName, remoteFilename, m_UserControl.BucketName, backupFilename,
-					                  MetadataDirective.COPY, true, null, null, System.DateTime.MinValue, false,
-					                  System.DateTime.MinValue, false, null, null, StorageClass.STANDARD, false,
-					                  m_UserControl.AccessKey, stamp, true, sig, null);
+					var copyRequest = new CopyObjectRequest() {
+						SourceBucket = m_UserControl.BucketName,
+						SourceKey = remoteFilename,
+						DestinationBucket = m_UserControl.BucketName,
+						DestinationKey = backupFilename,
+						ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
+					};
+					CopyObjectResponse response = s3client.CopyObject(copyRequest);
 				}
 				Grant[] acl = null;
 				if (fileExists(remoteFilename)){
@@ -123,7 +135,7 @@ namespace KeePassSync.Providers.S3 {
 
 
 				GenerateSigElements("PutObjectInline", out stamp, out sig);
-				AmazonS3Client s3client = getClient();
+				
 				var request = new PutObjectRequest() {
 					BucketName = m_UserControl.BucketName,
 					Key = remoteFilename,
@@ -268,8 +280,7 @@ namespace KeePassSync.Providers.S3 {
 		private AmazonS3.AmazonS3 client = new AmazonS3.AmazonS3();
 
 		private AmazonS3Client getClient() {
-			var s3r = Amazon.S3.S3Region.FindValue("");
-			var s3client = new AmazonS3Client(new BasicAWSCredentials(m_UserControl.AccessKey, m_UserControl.SecretAccessKey));
+			var s3client = new AmazonS3Client(new BasicAWSCredentials(m_UserControl.AccessKey, m_UserControl.SecretAccessKey), Amazon.RegionEndpoint.GetBySystemName(m_UserControl.RegionName));
 			return s3client;
 		}
 
