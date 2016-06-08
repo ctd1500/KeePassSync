@@ -32,7 +32,10 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -47,7 +50,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -56,9 +59,24 @@
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>NoPassword.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ReleasePLGX|AnyCPU' ">
+    <OutputPath>bin\ReleasePLGX\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AWSSDK">
-      <HintPath>lib\AWSSDK.dll</HintPath>
+    <Reference Include="AWSSDK.Core, Version=3.1.0.0, Culture=neutral, PublicKeyToken=885c28607f98e604, processorArchitecture=MSIL">
+      <HintPath>packages\AWSSDK.Core.3.1.7.0\lib\net35\AWSSDK.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="AWSSDK.S3, Version=3.1.0.0, Culture=neutral, PublicKeyToken=885c28607f98e604, processorArchitecture=MSIL">
+      <HintPath>packages\AWSSDK.S3.3.1.7.0\lib\net35\AWSSDK.S3.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="KeePass">
       <HintPath>C:\Program Files (x86)\KeePass Password Safe 2\KeePass.exe</HintPath>
@@ -199,6 +217,7 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="NoPassword.snk" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -301,7 +320,9 @@
       <CachedSettingsPropName>KeePassSync_AmazonS3_AmazonS3</CachedSettingsPropName>
     </WebReferenceUrl>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Analyzer Include="packages\AWSSDK.S3.3.1.7.0\analyzers\dotnet\cs\AWSSDK.S3.CodeAnalysis.dll" />
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
@@ -312,4 +333,86 @@
   -->
   <PropertyGroup>
   </PropertyGroup>
+  <PropertyGroup>
+    <PostBuildEvent>echo POSTBUILDSTEP for $(ProjectName)
+
+      set KPDir=C:\Program Files (x86)\KeePass Password Safe 2\
+	  set KPSTempDir=$(SolutionDir)compiled\$(ProjectName)
+
+      IF NOT "$(ConfigurationName)"=="ReleasePLGX" Goto :NotReleasePlgx
+      REM In release mode we want to make sure that we are working with the PLGX version.
+      REM This prevents debugging so should only be used when packaging a plgx file for
+      REM distribution.
+
+      REM create temporary directory
+      rmdir /S /Q "%25KPSTempDir%25"
+      mkdir "%25KPSTempDir%25"
+      if errorlevel 1 goto BuildEventFailed
+      echo Temporary directory created
+
+      REM copy relevant project files to temporary directory
+      REM (for simple KeePass plugins you may need to
+      REM copy only *.cs files and .csproj file)
+      if errorlevel 1 goto BuildEventFailed
+      copy "$(ProjectDir)*.cs" "%25KPSTempDir%25"
+      if errorlevel 1 goto BuildEventFailed
+      copy "$(ProjectDir)$(ProjectName).csproj" "%25KPSTempDir%25\$(ProjectName).csproj"
+      if errorlevel 1 goto BuildEventFailed
+      mkdir "%25KPSTempDir%25\Forms"
+      copy "$(ProjectDir)Forms\*.cs" "%25KPSTempDir%25\Forms"
+      copy "$(ProjectDir)Forms\*.resx" "%25KPSTempDir%25\Forms"
+	  if errorlevel 1 goto BuildEventFailed
+      mkdir "%25KPSTempDir%25\Interfaces"
+      copy "$(ProjectDir)Interfaces\*.cs" "%25KPSTempDir%25\Interfaces"
+	  if errorlevel 1 goto BuildEventFailed
+      mkdir "%25KPSTempDir%25\Providers"
+      xcopy "$(ProjectDir)Providers\*.cs" "%25KPSTempDir%25\Providers\" /S /Q
+      xcopy "$(ProjectDir)Providers\*.resx" "%25KPSTempDir%25\Providers\" /S /Q
+	  if errorlevel 1 goto BuildEventFailed
+      mkdir "%25KPSTempDir%25\Web References"
+      xcopy "$(ProjectDir)Web References\*.*" "%25KPSTempDir%25\Web References\" /S /Q
+	  if errorlevel 1 goto BuildEventFailed
+      mkdir "%25KPSTempDir%25\packages"
+      xcopy "$(ProjectDir)packages\AWSSDK.S3.3.1.7.0\lib\net35\AWSSDK.S3.dll" "%25KPSTempDir%25\packages\AWSSDK.S3.3.1.7.0\lib\net35\" /S /Q
+      xcopy "$(ProjectDir)packages\AWSSDK.Core.3.1.7.0\lib\net35\AWSSDK.Core.dll" "%25KPSTempDir%25\packages\AWSSDK.Core.3.1.7.0\lib\net35\" /S /Q
+      if errorlevel 1 goto BuildEventFailed
+      mkdir "%25KPSTempDir%25\Properties"
+	  xcopy "$(ProjectDir)Properties\*.*" "%25KPSTempDir%25\Properties\" /S
+	  if errorlevel 1 goto BuildEventFailed
+      mkdir "%25KPSTempDir%25\Resources\Icons"
+      xcopy "$(ProjectDir)Resources\*.png" "%25KPSTempDir%25\Resources\" /S
+      if errorlevel 1 goto BuildEventFailed
+      echo Files copied to temporary directory
+
+      REM create the PLGX
+      "%25KPDir%25KeePass.exe" --plgx-create "%25KPSTempDir%25" --plgx-prereq-net:3.5
+      if errorlevel 1 goto BuildEventFailed
+      echo PLGX created
+
+      REM delete the temporary directory and its contents
+      rem rmdir /S /Q "%25KPSTempDir%25"
+      if errorlevel 1 goto BuildEventFailed
+      echo Temporary directory deleted
+
+      goto BuildEventOK
+
+
+      :NotReleasePlgx
+      echo Invalid configuration selected. Please choose a different build configuration
+      echo or modify the post-build script to add support for this configuration.
+
+      :BuildEventFailed
+      echo POSTBUILDSTEP for $(ProjectName) FAILED
+      exit 1
+
+      :BuildEventOK
+      echo POSTBUILDSTEP for $(ProjectName) COMPLETED OK</PostBuildEvent>
+  </PropertyGroup>
+  <Import Project="..\packages\PlgxTool.1.0.0\build\PlgxTool.targets" Condition="Exists('..\packages\PlgxTool.1.0.0\build\PlgxTool.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\PlgxTool.1.0.0\build\PlgxTool.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\PlgxTool.1.0.0\build\PlgxTool.targets'))" />
+  </Target>
 </Project>

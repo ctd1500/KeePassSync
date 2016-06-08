@@ -1,3 +1,6 @@
 *.suo
 /KeePassSync/obj
 /KeePassSync/bin
+/KeePassSync/NoPassword.snk
+packages
+/compiled

@@ -384,6 +384,14 @@ namespace KeePassSync {
 		public override void Terminate() {
 		}
 
+		/// <summary>
+		/// Returns url for automatic updating of plugin
+		/// </summary> 
+		public override string UpdateUrl
+		{
+			get { return "https://cdn.sc.gl/keepass/plugins.txt"; }
+		}
+
 		public void SetStatus(StatusPriority priority, string msg) {
 			switch (priority) {
 				case StatusPriority.eMessageBoxFatal:

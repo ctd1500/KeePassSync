@@ -11,6 +11,7 @@ using KeePassSync.AmazonS3;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3.IO;
 
 namespace KeePassSync.Providers.S3 {
 
@@ -123,7 +124,12 @@ namespace KeePassSync.Providers.S3 {
 
 				GenerateSigElements("PutObjectInline", out stamp, out sig);
 				AmazonS3Client s3client = getClient();
-				var request = new PutObjectRequest().WithBucketName(m_UserControl.BucketName).WithKey(remoteFilename).WithFilePath(localFilename);
+				var request = new PutObjectRequest() {
+					BucketName = m_UserControl.BucketName,
+					Key = remoteFilename,
+					FilePath = localFilename,
+					ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
+				};
 
 				PutObjectResponse result = s3client.PutObject(request);
 				
@@ -151,9 +157,16 @@ namespace KeePassSync.Providers.S3 {
 			return "\"" + BitConverter.ToString(md5.ComputeHash(data)).Replace("-", "").ToLower() + "\"";
 		}
 		private bool fileExists(string key) {
-			DateTime stamp;
-			String sig;
+			//DateTime stamp;
+			//String sig;
 			bool result = false;
+
+			AmazonS3Client s3client = getClient();
+			S3FileInfo our_item = new S3FileInfo(s3client, m_UserControl.BucketName, key);
+			if (our_item.Exists) {
+				result = true;
+			}
+			/*
 			GenerateSigElements("GetObject", out stamp, out sig);
 			try {
 				GetObjectResult cur_item = client.GetObject(m_UserControl.BucketName, key, false, false, false, m_UserControl.AccessKey, stamp, true, sig, null);
@@ -163,6 +176,7 @@ namespace KeePassSync.Providers.S3 {
 				if (e.Message != "The specified key does not exist.")
 					throw e;
 			}
+			*/
 			return result;
 		}
 
@@ -175,14 +189,17 @@ namespace KeePassSync.Providers.S3 {
 				String sig;
 				GenerateSigElements("GetObject", out stamp, out sig);
 				AmazonS3Client s3client = getClient();
-				var request = new GetObjectRequest().WithBucketName(m_UserControl.BucketName).WithKey(remoteFilename);
+				var request = new GetObjectRequest() {
+					BucketName = m_UserControl.BucketName,
+					Key = remoteFilename
+				};
 
 				using (GetObjectResponse result = s3client.GetObject(request)) {
 					byte[] data = ReadFullStream(result.ResponseStream);
 
 					if (result == null || data == null)
 						return KeePassSyncErr.FileNotFound;
-					//byte[] data = result.Data;
+					
 					string hash = get_md5(data);
 					if (hash != result.ETag)
 						throw new Exception("File downloaded but our hash of: " + hash + " does not match server hash of: " + result.ETag);
@@ -251,6 +268,7 @@ namespace KeePassSync.Providers.S3 {
 		private AmazonS3.AmazonS3 client = new AmazonS3.AmazonS3();
 
 		private AmazonS3Client getClient() {
+			var s3r = Amazon.S3.S3Region.FindValue("");
 			var s3client = new AmazonS3Client(new BasicAWSCredentials(m_UserControl.AccessKey, m_UserControl.SecretAccessKey));
 			return s3client;
 		}
